@@ -1,4 +1,4 @@
-package com.devarsh.audio_workflow.api;
+package com.devarsh.audio_workflow.api.controller;
 
 import com.devarsh.audio_workflow.config.RabbitConfig;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;

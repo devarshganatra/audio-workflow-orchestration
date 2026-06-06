@@ -1,6 +1,8 @@
 package com.devarsh.audio_workflow.service;
 
 import com.devarsh.audio_workflow.domain.*;
+import com.devarsh.audio_workflow.exception.TaskNotFoundException;
+import com.devarsh.audio_workflow.exception.WorkflowNotFoundException;
 import com.devarsh.audio_workflow.repository.TaskHistoryRepository;
 import com.devarsh.audio_workflow.repository.TaskRepository;
 import com.devarsh.audio_workflow.repository.WorkflowRepository;
@@ -9,6 +11,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
+import java.util.List;
+import java.util.UUID;
 
 @Service
 @Transactional
@@ -37,13 +41,27 @@ public class WorkflowStateService {
 
         return workflow;
     }
+
+    public List<TaskHistory> getTimeline(
+            UUID workflowId
+    ) {
+
+        Workflow workflow =
+                getWorkflow(workflowId);
+
+        return taskHistoryRepository
+                .findByWorkflowIdOrderByOccurredAtAsc(
+                        workflow.getId()
+                );
+    }
+
     public void transitionTask(
             Long taskId,
             TaskStatus newStatus,
             String workerId,
             String message) {
 
-        Task task=taskRepository.findById(taskId).orElseThrow(()->new RuntimeException("Task not found"+taskId));
+        Task task=taskRepository.findById(taskId).orElseThrow(()->new TaskNotFoundException("Task not found"+taskId));
         String oldStatus=task.getStatus().name();
         task.setStatus(newStatus);
         taskRepository.save(task);
@@ -62,7 +80,7 @@ public class WorkflowStateService {
             String workerId) {
         Task task = taskRepository.findById(taskId)
                 .orElseThrow(() ->
-                        new RuntimeException(
+                        new TaskNotFoundException(
                                 "Task not found: " + taskId
                         ));
 
@@ -92,6 +110,18 @@ public class WorkflowStateService {
         );
      //   throw new UnsupportedOperationException();
     }
+    public List<Task> getTasks(
+            UUID workflowId
+    ) {
+
+        Workflow workflow =
+                getWorkflow(workflowId);
+
+        return taskRepository.findByWorkflowId(
+                workflow.getId()
+        );
+    }
+
 
     public void failWorkflow(
             Long workflowId,
@@ -99,7 +129,7 @@ public class WorkflowStateService {
         Workflow workflow = workflowRepository
                 .findById(workflowId)
                 .orElseThrow(() ->
-                        new RuntimeException(
+                        new WorkflowNotFoundException(
                                 "Workflow not found: "
                                         + workflowId
                         ));
@@ -117,7 +147,7 @@ public class WorkflowStateService {
         Workflow workflow = workflowRepository
                 .findById(workflowId)
                 .orElseThrow(() ->
-                        new RuntimeException(
+                        new WorkflowNotFoundException(
                                 "Workflow not found: "
                                         + workflowId
                         ));
@@ -128,6 +158,16 @@ public class WorkflowStateService {
 
         workflowRepository.save(workflow);
         //throw new UnsupportedOperationException();
+    }
+    public Workflow getWorkflow(UUID workflowId) {
+
+        return workflowRepository
+                .findByExternalId(workflowId)
+                .orElseThrow(() ->
+                        new WorkflowNotFoundException(
+                                "Workflow not found: " + workflowId
+                        )
+                );
     }
 //this is a helper function
     private void appendHistory(
