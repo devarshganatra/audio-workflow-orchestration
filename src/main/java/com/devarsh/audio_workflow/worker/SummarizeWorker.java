@@ -1,0 +1,40 @@
+package com.devarsh.audio_workflow.worker;
+
+import com.devarsh.audio_workflow.messaging.dto.TaskMessage;
+import com.devarsh.audio_workflow.messaging.dto.TaskResultMessage;
+import com.devarsh.audio_workflow.service.WorkflowStateService;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.amqp.rabbit.annotation.RabbitListener;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.stereotype.Component;
+
+import java.util.Map;
+
+@Component
+@RequiredArgsConstructor
+@Slf4j
+public class SummarizeWorker {
+
+    private final RabbitTemplate rabbitTemplate;
+    private final WorkflowStateService workflowStateService;
+
+    @RabbitListener(queues = "q.summarize")
+    public void handle(TaskMessage message) {
+        log.info("SummarizeWorker received task {}", message.taskId());
+        workflowStateService.markTaskInProgress(message.taskId(), "worker.summarize");
+
+        try {
+            Thread.sleep(500);
+            rabbitTemplate.convertAndSend("workflow.exchange", "results",
+                    new TaskResultMessage(message.taskId(), message.workflowId(),
+                            message.taskType(), true, null, Map.of("summary", "sample summary text")));
+            log.info("SummarizeWorker completed task {}", message.taskId());
+        } catch (Exception e) {
+            log.error("SummarizeWorker failed task {}", message.taskId(), e);
+            rabbitTemplate.convertAndSend("workflow.exchange", "results",
+                    new TaskResultMessage(message.taskId(), message.workflowId(),
+                            message.taskType(), false, e.getMessage(), Map.of()));
+        }
+    }
+}

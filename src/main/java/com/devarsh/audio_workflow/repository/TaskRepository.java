@@ -40,4 +40,15 @@ public interface TaskRepository extends JpaRepository<Task,Long> {
     );
 
 
+    @Query("""
+            SELECT COUNT(t) FROM Task t
+            WHERE t.workflow.id = :workflowId
+            AND t.taskType IN (
+                com.devarsh.audio_workflow.domain.TaskType.SUMMARIZE,
+                com.devarsh.audio_workflow.domain.TaskType.EXTRACT_KEYWORDS
+            )
+            AND t.status <> com.devarsh.audio_workflow.domain.TaskStatus.COMPLETED
+            """)
+    long countIncompleteFanOutTasks(@Param("workflowId") Long workflowId);
+
 }
