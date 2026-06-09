@@ -4,10 +4,21 @@ Shruti is a distributed audio orchestration engine built with Spring Boot 3. It 
 
 This project marks the beginning of a journey into distributed systems architecture, focusing heavily on backend orchestration patterns rather than simple CRUD operations.
 
+## What This Project Demonstrates
+- Distributed workflow orchestration
+- Event-driven architecture
+- RabbitMQ messaging patterns
+- Retry and failure recovery
+- State machine design
+- Idempotent worker execution
+- Database-backed workflow persistence
+- Observability with Micrometer
+
 ## Architecture & Technical Depth
 
 The system is built on an event-driven orchestrator pattern. When an audio file is ingested, it is securely stored in an S3-compatible blob store (MinIO), and a state machine is initialized in PostgreSQL. The `OrchestratorService` then dispatches a series of discrete, idempotent tasks to RabbitMQ.
 
+### 1. High-Level Architecture
 ```mermaid
 graph TD
     Client[Client / Web UI] -->|POST /api/v1/workflows| API[REST API]
@@ -15,6 +26,7 @@ graph TD
     API -->|Init State| DB[(PostgreSQL)]
     API -->|Start DAG| Orch[Orchestrator]
     
+    Orch -->|Cache State| Redis[(Redis)]
     Orch -->|Dispatch| RMQ((RabbitMQ Exchange))
     
     RMQ -->|Queue| W_Val[Validate Worker]
@@ -32,6 +44,132 @@ graph TD
     
     ResultQ -->|Consume| Listener[Result Listener]
     Listener -->|Trigger Next Node| Orch
+```
+
+### 2. State Transition Diagram (State Machine)
+Workflows and Tasks operate as strict state machines. The `RetryScheduler` actively monitors for `FAILED` tasks and transitions them back to `PENDING` until the maximum retry limit is reached, at which point they are marked `DEAD`.
+
+```mermaid
+stateDiagram-v2
+    direction LR
+    
+    state "Workflow State" as WS {
+        [*] --> PENDING
+        PENDING --> RUNNING : Start Tasks
+        RUNNING --> COMPLETED : All Tasks Done
+        RUNNING --> FAILED : Any Task DEAD
+    }
+
+    state "Task State" as TS {
+        [*] --> P_TASK : Dispatch
+        P_TASK: PENDING
+        
+        P_TASK --> IN_PROGRESS : Worker Picked Up
+        IN_PROGRESS --> T_COMPLETED : Success
+        T_COMPLETED: COMPLETED
+        
+        IN_PROGRESS --> T_FAILED : Exception
+        T_FAILED: FAILED
+        
+        T_FAILED --> P_TASK : RetryScheduler (Attempts < Max)
+        T_FAILED --> DEAD : Max Attempts Reached
+    }
+```
+
+### 3. Sequence Diagram (The Asynchronous Loop)
+Unlike synchronous REST calls, workers in Shruti never communicate directly with the next worker. They only report success back to the Orchestrator, which decides the next step in the Directed Acyclic Graph (DAG).
+
+```mermaid
+sequenceDiagram
+    participant API as REST Controller
+    participant Orch as OrchestratorService
+    participant RMQ as RabbitMQ
+    participant Worker as TaskWorker (e.g. Transcribe)
+    participant DB as PostgreSQL
+    
+    API->>DB: Save Workflow & Tasks (PENDING)
+    API->>Orch: Dispatch First Task
+    Orch->>RMQ: Publish Message (routing_key: transcribe)
+    API-->>Client: 202 Accepted (workflowId)
+    
+    Note over RMQ, Worker: Asynchronous Processing
+    RMQ-->>Worker: Consume Message
+    Worker->>DB: Update Task (IN_PROGRESS)
+    Worker->>Worker: Perform Heavy Lifting (API calls, MinIO reads)
+    
+    alt Success
+        Worker->>RMQ: Publish Success to 'workflow.results'
+    else Failure
+        Worker->>RMQ: Publish Failure to 'workflow.results'
+    end
+    
+    RMQ-->>Orch: Consume Result Event
+    Orch->>DB: Update Task (COMPLETED or FAILED)
+    
+    alt Task was successful
+        Orch->>Orch: Find Next Task in DAG
+        Orch->>RMQ: Publish Next Task
+    else Task failed & Max Retries hit
+        Orch->>DB: Mark Workflow as FAILED
+    end
+```
+
+### 4. Entity-Relationship Diagram (ERD)
+The persistence layer tracks the overarching workflow, granular task states, and an immutable audit log of task execution history for debugging and tracing.
+
+```mermaid
+erDiagram
+    WORKFLOW ||--o{ TASK : "contains"
+    TASK ||--o{ TASK_HISTORY : "generates"
+    
+    WORKFLOW {
+        bigint id PK
+        uuid external_id
+        varchar status "PENDING, RUNNING, COMPLETED, FAILED"
+        varchar audio_file_key
+        jsonb metadata
+        timestamp created_at
+    }
+    
+    TASK {
+        bigint id PK
+        bigint workflow_id FK
+        varchar task_type "VALIDATE, TRANSCRIBE, SUMMARIZE..."
+        varchar status "PENDING, IN_PROGRESS, COMPLETED, FAILED, DEAD"
+        int attempts
+        jsonb input_data
+        jsonb output_data
+    }
+    
+    TASK_HISTORY {
+        bigint id PK
+        bigint task_id FK
+        varchar status
+        text error_message
+        timestamp occurred_at
+    }
+```
+
+### 5. Infrastructure & Deployment Model
+The entire stack runs in isolated Docker containers communicating over a private Docker bridge network. Only the Spring Boot application (port 8080) and MinIO Console (port 9001) are exposed to the host machine.
+
+```mermaid
+graph TD
+    subgraph Host Machine
+        Browser[Web Browser]
+        Browser -->|localhost:8080| AppPort
+        Browser -->|localhost:9001| MinioPort
+    end
+    
+    subgraph Docker Bridge Network
+        AppPort((:8080)) --> App[Spring Boot Application]
+        MinioPort((:9001)) --> MinioUI[MinIO Console]
+        
+        App -->|JDBC :5432| DB[(PostgreSQL)]
+        App -->|AMQP :5672| RMQ((RabbitMQ))
+        App -->|RESP :6379| Redis[(Redis)]
+        App -->|S3 API :9000| Minio[(MinIO Storage)]
+    end
 ```
 
 ### Core Concepts Demonstrated

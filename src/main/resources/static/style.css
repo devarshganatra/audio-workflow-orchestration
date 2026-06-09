@@ -1,15 +1,16 @@
 :root {
-    --bg-dark: #0A0A10;
-    --panel-bg: rgba(25, 25, 35, 0.4);
-    --panel-border: rgba(255, 255, 255, 0.08);
-    --primary: #B535F6;
-    --primary-glow: rgba(181, 53, 246, 0.4);
-    --secondary: #00F0FF;
-    --text-main: #FFFFFF;
-    --text-muted: #8B8B9B;
-    --success: #00E676;
-    --warning: #FFC400;
-    --danger: #FF3D00;
+    --bg-dark: #0B1220;
+    --panel-bg: rgba(17, 24, 39, 0.7);
+    --panel-border: rgba(31, 41, 55, 0.8);
+    --primary: #4F46E5;
+    --primary-glow: rgba(79, 70, 229, 0.4);
+    --secondary: #D4AF37;
+    --text-main: #F9FAFB;
+    --text-muted: #94A3B8;
+    --success: #10B981;
+    --warning: #F59E0B;
+    --danger: #EF4444;
+    --dead: #7F1D1D;
 }
 
 * {
@@ -388,9 +389,12 @@ h1, h2, h3, .brand-name {
     letter-spacing: 0.5px;
 }
 
-.status-RUNNING { background: rgba(0, 240, 255, 0.1); color: var(--secondary); border: 1px solid rgba(0, 240, 255, 0.2); }
-.status-COMPLETED { background: rgba(0, 230, 118, 0.1); color: var(--success); border: 1px solid rgba(0, 230, 118, 0.2); }
-.status-FAILED { background: rgba(255, 61, 0, 0.1); color: var(--danger); border: 1px solid rgba(255, 61, 0, 0.2); }
+.status-PENDING { background: rgba(148, 163, 184, 0.1); color: var(--text-muted); border: 1px solid rgba(148, 163, 184, 0.2); }
+.status-IN_PROGRESS, .status-RUNNING { background: rgba(79, 70, 229, 0.1); color: var(--primary); border: 1px solid rgba(79, 70, 229, 0.2); }
+.status-COMPLETED { background: rgba(16, 185, 129, 0.1); color: var(--success); border: 1px solid rgba(16, 185, 129, 0.2); }
+.status-FAILED { background: rgba(239, 68, 68, 0.1); color: var(--danger); border: 1px solid rgba(239, 68, 68, 0.2); }
+.status-DEAD { background: rgba(127, 29, 29, 0.1); color: var(--dead); border: 1px solid rgba(127, 29, 29, 0.2); }
+.status-RETRYING { background: rgba(245, 158, 11, 0.1); color: var(--warning); border: 1px solid rgba(245, 158, 11, 0.2); }
 
 .empty-state {
     text-align: center;
@@ -549,9 +553,12 @@ h1, h2, h3, .brand-name {
 .log-status {
     font-weight: bold;
 }
+.log-status.PENDING { color: var(--text-muted); }
+.log-status.IN_PROGRESS { color: var(--primary); }
 .log-status.COMPLETED { color: var(--success); }
 .log-status.FAILED { color: var(--danger); }
-.log-status.IN_PROGRESS { color: var(--secondary); }
+.log-status.DEAD { color: var(--dead); }
+.log-status.RETRYING { color: var(--warning); }
 
 /* Results Section */
 .results-container {
