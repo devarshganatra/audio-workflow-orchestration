@@ -18,6 +18,7 @@ public class RetryScheduler {
 
     private final TaskRepository taskRepository;
     private final OrchestratorService orchestratorService;
+    private final MetricsService metricsService;
 
     @Scheduled(fixedDelay = 5000)
     @Transactional
@@ -34,6 +35,7 @@ public class RetryScheduler {
             taskRepository.save(task);
 
             orchestratorService.dispatchTask(task, task.getInputContext());
+            metricsService.incrementRetry(task.getTaskType().name());
         }
     }
 }

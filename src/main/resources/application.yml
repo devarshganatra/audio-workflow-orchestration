@@ -45,3 +45,9 @@ groq:
     base-url: ${GROQ_BASE_URL:https://api.groq.com/openai/v1}
     model: ${GROQ_MODEL:whisper-large-v3-turbo}
     chat-model: ${GROQ_CHAT_MODEL:llama-3.1-8b-instant}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,prometheus

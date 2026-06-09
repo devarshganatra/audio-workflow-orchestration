@@ -31,6 +31,8 @@ public class OrchestratorService {
 
     private final WorkflowStateService workflowStateService;
 
+    private final MetricsService metricsService;
+
     public void dispatchTask(Task task, Map<String, String> context) {
         task.setInputContext(context);
         taskRepository.save(task);
@@ -86,6 +88,7 @@ public class OrchestratorService {
     }
 
     private void handleTaskFailure(Task task, Workflow workflow, String errorMessage) {
+        metricsService.incrementTaskFailed(task.getTaskType().name());
         int newRetryCount = task.getRetryCount() + 1;
         task.setRetryCount(newRetryCount);
         taskRepository.save(task);

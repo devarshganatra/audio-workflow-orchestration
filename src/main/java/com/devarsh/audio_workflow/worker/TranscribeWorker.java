@@ -6,6 +6,7 @@ import com.devarsh.audio_workflow.messaging.dto.TaskResultMessage;
 import com.devarsh.audio_workflow.repository.WorkflowRepository;
 import com.devarsh.audio_workflow.service.GroqTranscriptionService;
 import com.devarsh.audio_workflow.service.IdempotencyService;
+import com.devarsh.audio_workflow.service.MetricsService;
 import com.devarsh.audio_workflow.service.MinioStorageService;
 import com.devarsh.audio_workflow.service.WorkflowStateService;
 import lombok.RequiredArgsConstructor;
@@ -24,6 +25,7 @@ public class TranscribeWorker extends AbstractTaskWorker {
     private final WorkflowRepository workflowRepository;
     private final MinioStorageService minioStorageService;
     private final GroqTranscriptionService groqTranscriptionService;
+    private final MetricsService metricsService;
 
     public TranscribeWorker(
             RabbitTemplate rabbitTemplate,
@@ -31,7 +33,8 @@ public class TranscribeWorker extends AbstractTaskWorker {
             IdempotencyService idempotencyService,
             WorkflowRepository workflowRepository,
             MinioStorageService minioStorageService,
-            GroqTranscriptionService groqTranscriptionService
+            GroqTranscriptionService groqTranscriptionService,
+            MetricsService metricsService
     ) {
         super(
                 rabbitTemplate,
@@ -42,6 +45,7 @@ public class TranscribeWorker extends AbstractTaskWorker {
         this.workflowRepository = workflowRepository;
         this.minioStorageService = minioStorageService;
         this.groqTranscriptionService = groqTranscriptionService;
+        this.metricsService = metricsService;
     }
 
     @RabbitListener(queues = "q.transcribe",containerFactory = "workerListenerFactory")
@@ -84,9 +88,11 @@ public class TranscribeWorker extends AbstractTaskWorker {
                     inputStream.readAllBytes();
 
             String transcript =
-                    groqTranscriptionService.transcribe(
-                            audioBytes,
-                            audioKey
+                    metricsService.getTranscriptionTimer().record(() ->
+                            groqTranscriptionService.transcribe(
+                                    audioBytes,
+                                    audioKey
+                            )
                     );
 
             String transcriptKey =

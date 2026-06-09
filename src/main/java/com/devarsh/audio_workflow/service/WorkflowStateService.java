@@ -21,6 +21,7 @@ public class WorkflowStateService {
     private final WorkflowRepository workflowRepository;
     private final TaskRepository taskRepository;
     private final TaskHistoryRepository taskHistoryRepository;
+    private final MetricsService metricsService;
 
     public Workflow createWorkflow(String audioFileKey){
         Workflow workflow=new Workflow();
@@ -141,7 +142,7 @@ public class WorkflowStateService {
         );
 
         workflowRepository.save(workflow);
-      //  throw new UnsupportedOperationException();
+        metricsService.incrementWorkflowFailed();
     }
 
     public void completeWorkflow(Long workflowId) {
@@ -159,7 +160,7 @@ public class WorkflowStateService {
         );
 
         workflowRepository.save(workflow);
-        //throw new UnsupportedOperationException();
+        metricsService.incrementWorkflowCompleted();
     }
     public Workflow getWorkflow(UUID workflowId) {
 
