@@ -31,6 +31,9 @@ public class OrchestratorService {
     private final WorkflowStateService workflowStateService;
 
     public void dispatchTask(Task task, Map<String, String> context) {
+        task.setInputContext(context);
+        taskRepository.save(task);
+
         Workflow workflow = task.getWorkflow();
         TaskMessage message =
                 new TaskMessage(

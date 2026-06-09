@@ -1,5 +1,6 @@
 package com.devarsh.audio_workflow.domain;
 
+import io.hypersistence.utils.hibernate.type.json.JsonType;
 import jakarta.persistence.*;
 import jakarta.websocket.server.ServerEndpoint;
 import lombok.Getter;
@@ -8,6 +9,9 @@ import lombok.Setter;
 import org.hibernate.annotations.IdGeneratorType;
 
 import java.time.Instant;
+import java.util.HashMap;
+import java.util.Map;
+import org.hibernate.annotations.Type;
 
 @Entity
 @Table(name = "tasks")
@@ -48,6 +52,10 @@ public class Task {
 
     @Column(columnDefinition = "TEXT")
     private String errorMessage;
+
+    @Type(JsonType.class)
+    @Column(columnDefinition = "jsonb")
+    private Map<String, String> inputContext = new HashMap<>();
 
 
     @Column(nullable = false,updatable = false)

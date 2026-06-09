@@ -2,6 +2,7 @@ package com.devarsh.audio_workflow.worker;
 
 import com.devarsh.audio_workflow.messaging.dto.TaskMessage;
 import com.devarsh.audio_workflow.messaging.dto.TaskResultMessage;
+import com.devarsh.audio_workflow.service.IdempotencyService;
 import com.devarsh.audio_workflow.service.WorkflowStateService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -12,29 +13,45 @@ import org.springframework.stereotype.Component;
 import java.util.Map;
 
 @Component
-@RequiredArgsConstructor
 @Slf4j
-public class PublishWorker {
+public class PublishWorker extends AbstractTaskWorker {
 
-    private final RabbitTemplate rabbitTemplate;
-    private final WorkflowStateService workflowStateService;
+    public PublishWorker(
+            RabbitTemplate rabbitTemplate,
+            WorkflowStateService workflowStateService,
+            IdempotencyService idempotencyService
+    ) {
+        super(
+                rabbitTemplate,
+                workflowStateService,
+                idempotencyService
+        );
+    }
 
-    @RabbitListener(queues = "q.publish")
+    @RabbitListener(queues = "q.publish",containerFactory = "workerListenerFactory")
     public void handle(TaskMessage message) {
-        log.info("PublishWorker received task {}", message.taskId());
-        workflowStateService.markTaskInProgress(message.taskId(), "worker.publish");
 
-        try {
-            Thread.sleep(500);
-            rabbitTemplate.convertAndSend("workflow.exchange", "results",
-                    new TaskResultMessage(message.taskId(), message.workflowId(),
-                            message.taskType(), true, null, Map.of("published", "true")));
-            log.info("PublishWorker completed task {}", message.taskId());
-        } catch (Exception e) {
-            log.error("PublishWorker failed task {}", message.taskId(), e);
-            rabbitTemplate.convertAndSend("workflow.exchange", "results",
-                    new TaskResultMessage(message.taskId(), message.workflowId(),
-                            message.taskType(), false, e.getMessage(), Map.of()));
-        }
+        log.info(
+                "PublishWorker received task {}",
+                message.taskId()
+        );
+
+        execute(
+                message,
+                "worker.publish"
+        );
+    }
+
+    @Override
+    protected Map<String, String> process(
+            TaskMessage message
+    ) throws Exception {
+
+        Thread.sleep(500);
+
+        return Map.of(
+                "published",
+                "true"
+        );
     }
 }

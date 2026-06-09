@@ -51,4 +51,12 @@ public interface TaskRepository extends JpaRepository<Task,Long> {
             """)
     long countIncompleteFanOutTasks(@Param("workflowId") Long workflowId);
 
+    @Query("""
+            SELECT t FROM Task t
+            WHERE t.status = com.devarsh.audio_workflow.domain.TaskStatus.PENDING
+            AND t.nextRunAt IS NOT NULL
+            AND t.nextRunAt <= :now
+            """)
+    List<Task> findTasksReadyForRetry(@Param("now") Instant now);
+
 }

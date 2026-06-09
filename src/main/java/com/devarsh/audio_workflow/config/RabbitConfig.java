@@ -125,4 +125,18 @@ public class RabbitConfig {
         factory.setMaxConcurrentConsumers(1);
         return factory;
     }
+    @Bean
+    public SimpleRabbitListenerContainerFactory workerListenerFactory(
+            ConnectionFactory connectionFactory,
+            MessageConverter messageConverter
+    ){
+        SimpleRabbitListenerContainerFactory factory=new SimpleRabbitListenerContainerFactory();
+        factory.setConnectionFactory(connectionFactory);
+        factory.setMessageConverter(messageConverter);
+        factory.setConcurrentConsumers(2);
+        factory.setMaxConcurrentConsumers(5);
+        factory.setPrefetchCount(1);
+        factory.setDefaultRequeueRejected(false);
+        return factory;
+    }
 }

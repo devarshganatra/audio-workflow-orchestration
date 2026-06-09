@@ -8,6 +8,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 
 @Service
@@ -63,6 +64,74 @@ public class MinioStorageService {
         catch (Exception e){
             throw new RuntimeException(
                     "Failed to download file",
+                    e
+            );
+        }
+    }
+    public boolean objectExists(String objectKey) {
+        try {
+
+            minioClient.statObject(
+                    StatObjectArgs.builder()
+                            .bucket(minioProperties.bucket())
+                            .object(objectKey)
+                            .build()
+            );
+
+            return true;
+
+        } catch (Exception e) {
+            return false;
+        }
+    }
+    public StatObjectResponse getMetadata(
+            String objectKey
+    ) {
+
+        try {
+
+            return minioClient.statObject(
+                    StatObjectArgs.builder()
+                            .bucket(minioProperties.bucket())
+                            .object(objectKey)
+                            .build()
+            );
+
+        } catch (Exception e) {
+
+            throw new RuntimeException(
+                    "Failed to read object metadata",
+                    e
+            );
+        }
+    }
+    public String uploadBytes(
+            byte[] data,
+            String objectKey,
+            String contentType
+    ) {
+
+        try {
+
+            minioClient.putObject(
+                    PutObjectArgs.builder()
+                            .bucket(minioProperties.bucket())
+                            .object(objectKey)
+                            .stream(
+                                    new ByteArrayInputStream(data),
+                                    data.length,
+                                    -1
+                            )
+                            .contentType(contentType)
+                            .build()
+            );
+
+            return objectKey;
+
+        } catch (Exception e) {
+
+            throw new RuntimeException(
+                    "Failed to upload object",
                     e
             );
         }

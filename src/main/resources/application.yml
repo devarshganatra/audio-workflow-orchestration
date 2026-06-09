@@ -1,4 +1,8 @@
 spring:
+  servlet:
+    multipart:
+      max-file-size: 100MB
+      max-request-size: 100MB
   datasource:
     url: jdbc:postgresql://localhost:5432/audioworkflow
     username: app
@@ -30,7 +34,11 @@ spring:
       port: 6379
 
 minio:
-  url: http://localhost:9000
-  access-key: minioadmin
-  secret-key: minioadmin
-  bucket: audio-files
+    url: http://localhost:9000
+    access-key: minioadmin
+    secret-key: minioadmin
+    bucket: audio-files
+groq:
+    api-key: your_key
+    base-url: https://api.groq.com/openai/v1
+    model: whisper-large-v3-turbo
