@@ -1,6 +1,8 @@
 services:
 
   app:
+    container_name: shruti
+    image: shruti:latest
     build: .
     ports:
       - "8080:8080"

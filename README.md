@@ -26,13 +26,17 @@ graph TD
     API -->|Init State| DB[(PostgreSQL)]
     API -->|Start DAG| Orch[Orchestrator]
     
-    Orch -->|Cache State| Redis[(Redis)]
     Orch -->|Dispatch| RMQ((RabbitMQ Exchange))
     
     RMQ -->|Queue| W_Val[Validate Worker]
     RMQ -->|Queue| W_Trans[Transcribe Worker]
     RMQ -->|Queue| W_Summ[Summarize Worker]
     RMQ -->|Queue| W_Key[Keywords Worker]
+    
+    W_Val <-->|Idempotency Check| Redis[(Redis)]
+    W_Trans <-->|Idempotency Check| Redis
+    W_Summ <-->|Idempotency Check| Redis
+    W_Key <-->|Idempotency Check| Redis
     
     W_Trans <-->|Streaming Audio| Groq1[Groq Whisper API]
     W_Summ <-->|Context Window| Groq2[Groq LLaMA 3.1 API]
