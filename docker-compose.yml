@@ -1,27 +1,78 @@
 services:
+
+  app:
+    build: .
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/audioworkflow
+      DB_USERNAME: ${DB_USERNAME:-app}
+      DB_PASSWORD: ${DB_PASSWORD:-secret}
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_USERNAME: ${RABBITMQ_USERNAME:-guest}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-guest}
+      REDIS_HOST: redis
+      MINIO_URL: http://minio:9000
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minioadmin}
+      MINIO_BUCKET: ${MINIO_BUCKET:-audio-files}
+      GROQ_API_KEY: ${GROQ_API_KEY}
+      GROQ_BASE_URL: ${GROQ_BASE_URL:-https://api.groq.com/openai/v1}
+      GROQ_MODEL: ${GROQ_MODEL:-whisper-large-v3-turbo}
+      GROQ_CHAT_MODEL: ${GROQ_CHAT_MODEL:-llama-3.1-8b-instant}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+
   postgres:
     image: postgres:16
     environment:
       POSTGRES_DB: audioworkflow
-      POSTGRES_USER: app
-      POSTGRES_PASSWORD: secret
+      POSTGRES_USER: ${DB_USERNAME:-app}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-secret}
     ports:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-app} -d audioworkflow"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   rabbitmq:
     image: rabbitmq:3.13-management
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USERNAME:-guest}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-guest}
     ports:
       - "5672:5672"
       - "15672:15672"
     volumes:
       - rmqdata:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "check_port_connectivity"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
 
   redis:
     image: redis:7
     ports:
       - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   minio:
     image: minio/minio
@@ -30,9 +81,17 @@ services:
       - "9000:9000"
       - "9001:9001"
     environment:
-      MINIO_ROOT_USER: minioadmin
-      MINIO_ROOT_PASSWORD: minioadmin
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-minioadmin}
+    volumes:
+      - miniodata:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
 volumes:
   pgdata:
   rmqdata:
+  miniodata:
