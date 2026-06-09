@@ -103,12 +103,14 @@ public class WorkflowStateService {
         //throw new UnsupportedOperationException();
     }
 
-    public void recordHeartbeat(Long taskId) {
+    @Transactional
+    public void recordHeartbeat(
+            Long taskId
+    ) {
         taskRepository.updateHeartbeat(
                 taskId,
                 Instant.now()
         );
-     //   throw new UnsupportedOperationException();
     }
     public List<Task> getTasks(
             UUID workflowId

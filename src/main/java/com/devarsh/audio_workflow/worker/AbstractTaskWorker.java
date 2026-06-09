@@ -10,14 +10,19 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 
 import java.util.Map;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
+
 @Slf4j
 public abstract class AbstractTaskWorker {
 
     protected final RabbitTemplate rabbitTemplate;
     protected final WorkflowStateService workflowStateService;
     protected final IdempotencyService idempotencyService;
-
-
+    //this is for the watchdog timer
+    private final ScheduledExecutorService heartbeatExecutor= Executors.newScheduledThreadPool(5);
     protected AbstractTaskWorker(
             RabbitTemplate rabbitTemplate,
             WorkflowStateService workflowStateService,
@@ -50,7 +55,15 @@ public abstract class AbstractTaskWorker {
                 message.taskId(),
                 workerId
         );
-
+        ScheduledFuture<?> heartbeat =
+                heartbeatExecutor.scheduleAtFixedRate(
+                        () -> workflowStateService.recordHeartbeat(
+                                message.taskId()
+                        ),
+                        0,
+                        30,
+                        TimeUnit.SECONDS
+                );
         try {
 
             Map<String, String> output =
@@ -65,6 +78,8 @@ public abstract class AbstractTaskWorker {
                     output
             );
 
+
+
         } catch (Exception e) {
 
             log.error(
@@ -73,7 +88,12 @@ public abstract class AbstractTaskWorker {
                     message.taskId(),
                     e
             );
+            publishFailure(message,e);
         }
+        finally {
+            heartbeat.cancel(false);
+        }
+
     }
 
     protected void publishSuccess(
