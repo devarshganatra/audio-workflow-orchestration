@@ -17,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -73,11 +74,15 @@ public class OrchestratorService {
             handleTaskFailure(task, workflow, result.errorMessage());
             return;
         }
+        workflow.getMetadata()
+                .putAll(result.output());
+
+        workflowRepository.save(workflow);
 
         workflowStateService.transitionTask(task.getId(), TaskStatus.COMPLETED,
                 "orchestrator", "Task completed");
 
-        scheduleNextTask(task, workflow, result.output());
+        scheduleNextTask(task, workflow);
     }
 
     private void handleTaskFailure(Task task, Workflow workflow, String errorMessage) {
@@ -101,30 +106,58 @@ public class OrchestratorService {
         }
     }
 
-    private void scheduleNextTask(Task completedTask, Workflow workflow, Map<String, String> output) {
+    private void scheduleNextTask(Task completedTask, Workflow workflow) {
+
+        Map<String, String> workflowContext =
+                workflow.getMetadata()
+                        .entrySet()
+                        .stream()
+                        .collect(
+                                Collectors.toMap(
+                                        Map.Entry::getKey,
+                                        entry -> String.valueOf(
+                                                entry.getValue()
+                                        )
+                                )
+                        );
 
         switch (completedTask.getTaskType()) {
 
             case VALIDATE -> {
-                Task next = taskRepository.save(Task.create(workflow, TaskType.TRANSCRIBE));
-                dispatchTask(next, output);
+                Task next = taskRepository.saveAndFlush(Task.create(workflow, TaskType.TRANSCRIBE));
+                dispatchTask(next, workflowContext);
             }
 
             case TRANSCRIBE -> {
-                Task summarize = taskRepository.save(Task.create(workflow, TaskType.SUMMARIZE));
-                Task keywords  = taskRepository.save(Task.create(workflow, TaskType.EXTRACT_KEYWORDS));
-                dispatchTask(summarize, output);
-                dispatchTask(keywords, output);
+                Task summarize = taskRepository.saveAndFlush(Task.create(workflow, TaskType.SUMMARIZE));
+                Task keywords  = taskRepository.saveAndFlush(Task.create(workflow, TaskType.EXTRACT_KEYWORDS));
+                dispatchTask(summarize, workflowContext);
+                dispatchTask(keywords, workflowContext);
             }
 
             case SUMMARIZE, EXTRACT_KEYWORDS -> {
-                workflowRepository.findByIdForUpdate(workflow.getId());
+                Workflow lockedWorkflow = workflowRepository.findByIdForUpdate(workflow.getId())
+                        .orElseThrow();
 
-                long incomplete = taskRepository.countIncompleteFanOutTasks(workflow.getId());
+                long incomplete = taskRepository.countIncompleteFanOutTasks(lockedWorkflow.getId());
 
                 if (incomplete == 0) {
-                    Task publish = taskRepository.save(Task.create(workflow, TaskType.PUBLISH));
-                    dispatchTask(publish, output);
+                    // Re-build context from the locked workflow so it includes
+                    // ALL fan-out outputs (summaryKey + keywordsKey)
+                    Map<String, String> freshContext =
+                            lockedWorkflow.getMetadata()
+                                    .entrySet()
+                                    .stream()
+                                    .collect(
+                                            Collectors.toMap(
+                                                    Map.Entry::getKey,
+                                                    entry -> String.valueOf(
+                                                            entry.getValue()
+                                                    )
+                                            )
+                                    );
+                    Task publish = taskRepository.saveAndFlush(Task.create(lockedWorkflow, TaskType.PUBLISH));
+                    dispatchTask(publish, freshContext);
                 }
             }
 

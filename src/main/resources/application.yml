@@ -39,6 +39,8 @@ minio:
     secret-key: minioadmin
     bucket: audio-files
 groq:
-    api-key: your_key
+    api-key: ${GROQ_API_KEY}
     base-url: https://api.groq.com/openai/v1
     model: whisper-large-v3-turbo
+
+    chat-model: llama-3.1-8b-instant

@@ -6,6 +6,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 public record GroqProperties(
         String apiKey,
         String baseUrl,
-        String model
+        String model,
+        String chatModel
 ) {
 }
