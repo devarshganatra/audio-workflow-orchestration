@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VoxFlow - Audio Workflow Engine</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar / Navigation -->
+        <nav class="sidebar glass-panel">
+            <div class="brand">
+                <i class="fa-solid fa-wave-square brand-icon"></i>
+                <span class="brand-name">VoxFlow</span>
+            </div>
+            <ul class="nav-links">
+                <li class="active" id="navDashboard" onclick="switchView('dashboard')"><i class="fa-solid fa-border-all"></i> Dashboard</li>
+                <li id="navAnalytics" onclick="switchView('analytics')"><i class="fa-solid fa-chart-line"></i> Analytics</li>
+            </ul>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="top-bar glass-panel">
+                <div class="search-bar">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                    <input type="text" placeholder="Search workflows...">
+                </div>
+                <div class="user-profile">
+                    <div class="status-indicator online"></div>
+                    <span>System Online</span>
+                </div>
+            </header>
+
+            <div class="dashboard-grid" id="dashboardView">
+                <!-- Upload Section -->
+                <section class="upload-section glass-panel">
+                    <h2><i class="fa-solid fa-cloud-arrow-up"></i> Upload Audio</h2>
+                    <div class="drop-zone" id="dropZone">
+                        <input type="file" id="fileInput" accept="audio/*" hidden>
+                        <div class="upload-icon">
+                            <i class="fa-solid fa-plus"></i>
+                        </div>
+                        <p>Drag & drop audio files here</p>
+                        <span class="file-limits">WAV, MP3, M4A up to 100MB</span>
+                        <button class="btn primary-btn" onclick="document.getElementById('fileInput').click()">Browse Files</button>
+                    </div>
+                    <div id="uploadStatus" class="upload-status hidden">
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="uploadProgress"></div>
+                        </div>
+                        <p id="uploadStatusText">Uploading...</p>
+                    </div>
+                </section>
+
+                <!-- Active Workflows Summary -->
+                <section class="workflows-section glass-panel">
+                    <div class="section-header">
+                        <h2><i class="fa-solid fa-list-check"></i> Active Workflows</h2>
+                        <span class="badge" id="activeCount">0</span>
+                    </div>
+                    <div class="workflows-list" id="workflowsList">
+                        <!-- Workflow items injected here -->
+                        <div class="empty-state">No active workflows. Upload a file to start.</div>
+                    </div>
+                </section>
+            </div>
+
+            <!-- Detailed Timeline View (Hidden by default, shown when workflow is selected) -->
+            <section class="timeline-section glass-panel hidden" id="timelineSection">
+                <div class="timeline-header">
+                    <div>
+                        <h2 id="timelineTitle">Workflow Details</h2>
+                        <p class="subtitle" id="timelineId">ID: ...</p>
+                    </div>
+                    <button class="btn icon-btn" onclick="closeTimeline()"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+                
+                <div class="timeline-container">
+                    <!-- Stages track -->
+                    <div class="stages-track">
+                        <div class="stage" id="stage-VALIDATE">
+                            <div class="stage-icon"><i class="fa-solid fa-check-double"></i></div>
+                            <span>Validate</span>
+                        </div>
+                        <div class="stage-line"></div>
+                        <div class="stage" id="stage-TRANSCRIBE">
+                            <div class="stage-icon"><i class="fa-solid fa-closed-captioning"></i></div>
+                            <span>Transcribe</span>
+                        </div>
+                        <div class="stage-line"></div>
+                        <div class="stage" id="stage-SUMMARIZE">
+                            <div class="stage-icon"><i class="fa-solid fa-file-lines"></i></div>
+                            <span>Summarize</span>
+                        </div>
+                        <div class="stage-line"></div>
+                        <div class="stage" id="stage-EXTRACT_KEYWORDS">
+                            <div class="stage-icon"><i class="fa-solid fa-tags"></i></div>
+                            <span>Keywords</span>
+                        </div>
+                        <div class="stage-line"></div>
+                        <div class="stage" id="stage-PUBLISH">
+                            <div class="stage-icon"><i class="fa-solid fa-cloud-arrow-up"></i></div>
+                            <span>Publish</span>
+                        </div>
+                    </div>
+
+                    <!-- Events log -->
+                    <div class="events-log">
+                        <h3>Event Log</h3>
+                        <ul id="eventsList">
+                            <!-- Events injected here -->
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Results Viewer (Shown when COMPLETED) -->
+                <div id="resultsContainer" class="results-container hidden">
+                    <div class="results-header">
+                        <h3><i class="fa-solid fa-file-invoice"></i> Final Results</h3>
+                    </div>
+                    
+                    <div class="result-tabs">
+                        <button class="tab-btn active" onclick="switchTab('transcript')">Transcript</button>
+                        <button class="tab-btn" onclick="switchTab('summary')">Summary</button>
+                        <button class="tab-btn" onclick="switchTab('keywords')">Keywords</button>
+                    </div>
+
+                    <div class="result-content-box">
+                        <button class="btn icon-btn copy-btn" onclick="copyResult()" title="Copy to clipboard">
+                            <i class="fa-regular fa-copy"></i>
+                        </button>
+                        <div id="resultText" class="result-text">Waiting for results...</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Analytics View (Hidden by default) -->
+            <section class="analytics-section hidden" id="analyticsView">
+                <div class="analytics-header">
+                    <h2><i class="fa-solid fa-chart-pie"></i> System Analytics</h2>
+                    <button class="btn icon-btn" onclick="fetchAnalytics()"><i class="fa-solid fa-rotate-right"></i></button>
+                </div>
+                
+                <div class="analytics-grid">
+                    <div class="stat-card glass-panel success">
+                        <div class="stat-icon"><i class="fa-solid fa-check-circle"></i></div>
+                        <div class="stat-value" id="statCompleted">0</div>
+                        <div class="stat-label">Workflows Completed</div>
+                    </div>
+                    <div class="stat-card glass-panel danger">
+                        <div class="stat-icon"><i class="fa-solid fa-times-circle"></i></div>
+                        <div class="stat-value" id="statFailed">0</div>
+                        <div class="stat-label">Workflows Failed</div>
+                    </div>
+                    <div class="stat-card glass-panel warning">
+                        <div class="stat-icon"><i class="fa-solid fa-triangle-exclamation"></i></div>
+                        <div class="stat-value" id="statTaskFailures">0</div>
+                        <div class="stat-label">Total Task Failures</div>
+                    </div>
+                    <div class="stat-card glass-panel info">
+                        <div class="stat-icon"><i class="fa-solid fa-rotate-left"></i></div>
+                        <div class="stat-value" id="statRetries">0</div>
+                        <div class="stat-label">Total Retries Executed</div>
+                    </div>
+                    <div class="stat-card glass-panel purple">
+                        <div class="stat-icon"><i class="fa-solid fa-stopwatch"></i></div>
+                        <div class="stat-value" id="statDurationAvg">0s</div>
+                        <div class="stat-label">Avg Transcription Time</div>
+                    </div>
+                    <div class="stat-card glass-panel purple">
+                        <div class="stat-icon"><i class="fa-solid fa-stopwatch-20"></i></div>
+                        <div class="stat-value" id="statDurationMax">0s</div>
+                        <div class="stat-label">Max Transcription Time</div>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <!-- Animated background elements -->
+    <div class="bg-orb orb-1"></div>
+    <div class="bg-orb orb-2"></div>
+    <div class="bg-orb orb-3"></div>
+
+    <script src="app.js?v=2"></script>
+</body>
+</html>

@@ -3,6 +3,7 @@ package com.devarsh.audio_workflow.api.controller;
 import com.devarsh.audio_workflow.api.dto.TaskResponse;
 import com.devarsh.audio_workflow.api.dto.TimelineEvent;
 import com.devarsh.audio_workflow.api.dto.WorkflowResponse;
+import com.devarsh.audio_workflow.api.dto.WorkflowResultsResponse;
 import com.devarsh.audio_workflow.domain.Task;
 import com.devarsh.audio_workflow.domain.TaskHistory;
 import com.devarsh.audio_workflow.domain.TaskType;
@@ -122,5 +123,24 @@ public class AudioController {
                 .toList();
     }
 
+    @GetMapping("/{workflowId}/results")
+    public WorkflowResultsResponse getResults(@PathVariable UUID workflowId) {
+        Workflow workflow = workflowStateService.getWorkflow(workflowId);
+        
+        String transcript = readMinioTextOrNull((String) workflow.getMetadata().get("transcriptKey"));
+        String summary = readMinioTextOrNull((String) workflow.getMetadata().get("summaryKey"));
+        String keywords = readMinioTextOrNull((String) workflow.getMetadata().get("keywordsKey"));
+
+        return new WorkflowResultsResponse(transcript, summary, keywords);
+    }
+
+    private String readMinioTextOrNull(String objectKey) {
+        if (objectKey == null) return null;
+        try (java.io.InputStream is = minioStorageService.downloadFile(objectKey)) {
+            return new String(is.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
+        } catch (Exception e) {
+            return "Error reading from storage: " + e.getMessage();
+        }
+    }
 
 }
