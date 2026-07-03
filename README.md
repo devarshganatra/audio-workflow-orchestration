@@ -217,3 +217,9 @@ The entire infrastructure, including the application layer, is containerized. Th
 4. Interact with the system:
    The API and the accompanying frontend observability dashboard are bound to port 8080.
    Navigate to `http://localhost:8080` to submit jobs and trace the workflow execution through the distributed workers.
+
+## DeepWiki
+
+For a more in-depth exploration of the project's architecture, workflows, implementation details, and design decisions, refer to the DeepWiki documentation:
+
+**DeepWiki:** https://deepwiki.com/devarshganatra/audio-workflow-orchestration
