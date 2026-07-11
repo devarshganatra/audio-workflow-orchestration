@@ -34,6 +34,37 @@ services:
       minio:
         condition: service_healthy
 
+  worker:
+    image: shruti:latest
+    env_file:
+      - .env
+    environment:
+      SPRING_MAIN_WEB_APPLICATION_TYPE: none
+      DB_URL: jdbc:postgresql://postgres:5432/audioworkflow
+      DB_USERNAME: ${DB_USERNAME:-app}
+      DB_PASSWORD: ${DB_PASSWORD:-secret}
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_USERNAME: ${RABBITMQ_USERNAME:-guest}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-guest}
+      REDIS_HOST: redis
+      MINIO_URL: http://minio:9000
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minioadmin}
+      MINIO_BUCKET: ${MINIO_BUCKET:-audio-files}
+      GROQ_API_KEY: ${GROQ_API_KEY}
+      GROQ_BASE_URL: ${GROQ_BASE_URL:-https://api.groq.com/openai/v1}
+      GROQ_MODEL: ${GROQ_MODEL:-whisper-large-v3-turbo}
+      GROQ_CHAT_MODEL: ${GROQ_CHAT_MODEL:-llama-3.1-8b-instant}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+
   postgres:
     image: postgres:16
     environment:
