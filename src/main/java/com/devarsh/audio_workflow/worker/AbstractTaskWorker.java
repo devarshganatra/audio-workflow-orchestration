@@ -1,13 +1,10 @@
 package com.devarsh.audio_workflow.worker;
 
+import com.devarsh.audio_workflow.domain.OutboxEvent;
 import com.devarsh.audio_workflow.messaging.dto.TaskMessage;
-import com.devarsh.audio_workflow.messaging.dto.TaskResultMessage;
-import com.devarsh.audio_workflow.repository.WorkflowRepository;
 import com.devarsh.audio_workflow.service.IdempotencyService;
-import com.devarsh.audio_workflow.service.MinioStorageService;
 import com.devarsh.audio_workflow.service.WorkflowStateService;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.amqp.rabbit.core.RabbitTemplate;
 
 import java.util.Map;
 import java.util.concurrent.Executors;
@@ -18,20 +15,16 @@ import java.util.concurrent.TimeUnit;
 @Slf4j
 public abstract class AbstractTaskWorker {
 
-    protected final RabbitTemplate rabbitTemplate;
     protected final WorkflowStateService workflowStateService;
     protected final IdempotencyService idempotencyService;
-    //this is for the watchdog timer
-    private final ScheduledExecutorService heartbeatExecutor= Executors.newScheduledThreadPool(5);
+    private final ScheduledExecutorService heartbeatExecutor = Executors.newScheduledThreadPool(5);
+
     protected AbstractTaskWorker(
-            RabbitTemplate rabbitTemplate,
             WorkflowStateService workflowStateService,
             IdempotencyService idempotencyService
     ) {
-        this.rabbitTemplate = rabbitTemplate;
         this.workflowStateService = workflowStateService;
         this.idempotencyService = idempotencyService;
-
     }
 
     protected void execute(
@@ -69,72 +62,31 @@ public abstract class AbstractTaskWorker {
             Map<String, String> output =
                     process(message);
 
-            idempotencyService.markProcessed(
-                    message.taskId()
+            idempotencyService.markProcessed(message.taskId());
+
+            workflowStateService.saveOutboxEvent(
+                    OutboxEvent.success(
+                            message.taskId(),
+                            message.workflowId(),
+                            message.taskType(),
+                            output
+                    )
             );
-
-            publishSuccess(
-                    message,
-                    output
-            );
-
-
 
         } catch (Exception e) {
-
-            log.error(
-                    "Worker {} failed task {}",
-                    workerId,
-                    message.taskId(),
-                    e
+            log.error("Worker {} failed task {}", workerId, message.taskId(), e);
+            workflowStateService.saveOutboxEvent(
+                    OutboxEvent.failure(
+                            message.taskId(),
+                            message.workflowId(),
+                            message.taskType(),
+                            e.getMessage()
+                    )
             );
-            publishFailure(message,e);
-        }
-        finally {
+        } finally {
             heartbeat.cancel(false);
         }
-
     }
 
-    protected void publishSuccess(
-            TaskMessage message,
-            Map<String, String> output
-    ) {
-
-        rabbitTemplate.convertAndSend(
-                "workflow.exchange",
-                "results",
-                new TaskResultMessage(
-                        message.taskId(),
-                        message.workflowId(),
-                        message.taskType(),
-                        true,
-                        null,
-                        output
-                )
-        );
-    }
-
-    protected void publishFailure(
-            TaskMessage message,
-            Exception e
-    ) {
-
-        rabbitTemplate.convertAndSend(
-                "workflow.exchange",
-                "results",
-                new TaskResultMessage(
-                        message.taskId(),
-                        message.workflowId(),
-                        message.taskType(),
-                        false,
-                        e.getMessage(),
-                        Map.of()
-                )
-        );
-    }
-
-    protected abstract Map<String, String> process(
-            TaskMessage message
-    ) throws Exception;
+    protected abstract Map<String, String> process(TaskMessage message) throws Exception;
 }

@@ -1,18 +1,13 @@
-package com.devarsh.audio_workflow.worker;
-
 import com.devarsh.audio_workflow.domain.Workflow;
 import com.devarsh.audio_workflow.messaging.dto.TaskMessage;
-import com.devarsh.audio_workflow.messaging.dto.TaskResultMessage;
 import com.devarsh.audio_workflow.repository.WorkflowRepository;
 import com.devarsh.audio_workflow.service.GroqTranscriptionService;
 import com.devarsh.audio_workflow.service.IdempotencyService;
 import com.devarsh.audio_workflow.service.MetricsService;
 import com.devarsh.audio_workflow.service.MinioStorageService;
 import com.devarsh.audio_workflow.service.WorkflowStateService;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
-import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Component;
 
 import java.io.InputStream;
@@ -28,7 +23,6 @@ public class TranscribeWorker extends AbstractTaskWorker {
     private final MetricsService metricsService;
 
     public TranscribeWorker(
-            RabbitTemplate rabbitTemplate,
             WorkflowStateService workflowStateService,
             IdempotencyService idempotencyService,
             WorkflowRepository workflowRepository,
@@ -36,11 +30,7 @@ public class TranscribeWorker extends AbstractTaskWorker {
             GroqTranscriptionService groqTranscriptionService,
             MetricsService metricsService
     ) {
-        super(
-                rabbitTemplate,
-                workflowStateService,
-                idempotencyService
-        );
+        super(workflowStateService, idempotencyService);
 
         this.workflowRepository = workflowRepository;
         this.minioStorageService = minioStorageService;

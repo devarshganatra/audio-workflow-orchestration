@@ -9,7 +9,6 @@ import com.devarsh.audio_workflow.service.WorkflowStateService;
 import io.minio.StatObjectResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
-import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Component;
 
 import java.util.Map;
@@ -34,18 +33,12 @@ public class ValidateWorker extends AbstractTaskWorker {
     private final MinioStorageService minioStorageService;
 
     public ValidateWorker(
-            RabbitTemplate rabbitTemplate,
             WorkflowStateService workflowStateService,
             IdempotencyService idempotencyService,
             WorkflowRepository workflowRepository,
             MinioStorageService minioStorageService
     ) {
-        super(
-                rabbitTemplate,
-                workflowStateService,
-                idempotencyService
-        );
-
+        super(workflowStateService, idempotencyService);
         this.workflowRepository = workflowRepository;
         this.minioStorageService = minioStorageService;
     }

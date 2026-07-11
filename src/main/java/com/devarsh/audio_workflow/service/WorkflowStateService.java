@@ -3,6 +3,7 @@ package com.devarsh.audio_workflow.service;
 import com.devarsh.audio_workflow.domain.*;
 import com.devarsh.audio_workflow.exception.TaskNotFoundException;
 import com.devarsh.audio_workflow.exception.WorkflowNotFoundException;
+import com.devarsh.audio_workflow.repository.OutboxEventRepository;
 import com.devarsh.audio_workflow.repository.TaskHistoryRepository;
 import com.devarsh.audio_workflow.repository.TaskRepository;
 import com.devarsh.audio_workflow.repository.WorkflowRepository;
@@ -12,6 +13,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -21,6 +23,7 @@ public class WorkflowStateService {
     private final WorkflowRepository workflowRepository;
     private final TaskRepository taskRepository;
     private final TaskHistoryRepository taskHistoryRepository;
+    private final OutboxEventRepository outboxEventRepository;
     private final MetricsService metricsService;
 
     public Workflow createWorkflow(String audioFileKey){
@@ -172,7 +175,10 @@ public class WorkflowStateService {
                         )
                 );
     }
-//this is a helper function
+    public void saveOutboxEvent(OutboxEvent event) {
+        outboxEventRepository.save(event);
+    }
+
     private void appendHistory(
             Task task,
             String oldStatus,
